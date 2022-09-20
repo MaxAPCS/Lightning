@@ -2,24 +2,18 @@ import java.util.List;
 
 void setup() {
   size(500,500);
+  //noLoop();
+  frameRate(12);
 }
 
 int lightning = 0;
-List<List<Float>> vertices = new ArrayList<List<Float>>();
+List<LightningBranch> branches = new ArrayList<LightningBranch>() {{
+  add(new LightningBranch());
+}};
 int i = 0;
 void draw() {
   if (i++ >= 10) {
-    for (List<Float> vertice : vertices) {
-      double deg = Math.random() * 360;
-      float ox = vertice.get(0);
-      float oy = vertice.get(1);
-      double dist = Math.sqrt((ox - 250) * (oy - 250));
-      double magn = 15 + Math.random() * dist / 100;
-      vertice.set(0, vertice.get(2));
-      vertice.set(1, vertice.get(3));
-      vertice.set(2, ox+(float)(Math.ceil(Math.cos(deg)) * magn));
-      vertice.set(3, oy+(float)(Math.ceil(Math.sin(deg)) * magn));
-    }
+    for (LightningBranch branch : branches) branch.update();
     i = 0;
   }
   noStroke();
@@ -33,19 +27,13 @@ void draw() {
   ellipse(250, 250, 500, 500);
   
   noFill();
-  for (List<Float> vertice : vertices) {
-    double dist = Math.sqrt((vertice.get(2) - 250) * (vertice.get(3) - 250));
-    stroke(blend(0xff0000ff, 0xaaaaaaff, (float)(dist/350)));
-    strokeWeight(Math.max((float)Math.ceil((1 - dist/400) * 8), 4));
-    line(vertice.get(0), vertice.get(1), vertice.get(2), vertice.get(3));
+  for (LightningBranch branch : branches) {
+    branch.draw();
   }
 }
 
 void mousePressed() {
-  List<Float> newVertice = new ArrayList<Float>();
-  newVertice.add(250f); newVertice.add(250f);
-  newVertice.add(250f); newVertice.add(250f);
-  vertices.add(newVertice);
+  branches.add(new LightningBranch());
 }
 
 // "Borrowed" from StackOverflow
@@ -69,4 +57,48 @@ int blend( int i1, int i2, float ratio ) {
     int b = (int)((b1 * iRatio) + (b2 * ratio));
 
     return a << 24 | r << 16 | g << 8 | b;
+}
+
+class LightningBranch {
+  private int dx = 0, dy = 0;
+  private List<LightningBranch> children = new ArrayList<LightningBranch>();
+  public static final int defaultdepth = 5;
+  
+  public LightningBranch() {
+    this(defaultdepth);
+  }
+  
+  private LightningBranch(int depth) { // TODO: clamp at plasma ball ring, animate, limit direction to vector
+    double deg = Math.random() * 360;
+    double magn= depth * 20;
+    this.dx = (int)Math.round( Math.cos(deg) * magn );
+    this.dy = (int)Math.round( Math.sin(deg) * magn );
+    if (depth >= 1)
+    for (int i = defaultdepth; i >= depth; i-=2) {
+      this.children.add(new LightningBranch(depth-1));
+    }
+  }
+  
+  public void draw() {
+    this.draw(250, 250);
+  }
+  
+  private void draw(int ox, int oy) {
+    int ex = ox + this.dx;
+    int ey = ox + this.dy;
+    double distsq = Math.abs((ex - 250) * (ey - 250));
+    float radperc= Math.min(Math.max((float)(distsq / (250 * 250)), 0f), 1f);
+    stroke(blend(0xff0000ff, 0xaaeeaaff, radperc));
+    strokeWeight((1.1f-radperc) * 10);
+    line(ox, oy, ex, ey);
+    for (LightningBranch child : children) {
+      child.draw(ex, ey);
+    }
+  }
+  
+  public void update() {
+    for (LightningBranch child : children) {
+      child.update();
+    }
+  }
 }
