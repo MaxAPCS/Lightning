@@ -1,17 +1,18 @@
 import java.util.List;
+import java.awt.Point;
 
 List<LightningBranch> branches = new ArrayList<LightningBranch>();
 void setup() {
   size(500,500);
   //noLoop();
-  frameRate(12);
+  frameRate(24);
   branches.add(new LightningBranch());
 }
 
 int lightning = 0;
 int i = 0;
 void draw() {
-  if (i++ >= 6) {
+  if (i++ >= 4) {
     for (LightningBranch branch : branches) branch.update();
     i = 0;
   }
@@ -21,15 +22,17 @@ void draw() {
   fill(0);
   ellipse(250, 250, 15, 15);
   noFill();
+  strokeJoin(BEVEL);
   for (LightningBranch branch : branches) branch.draw();
-  noFill();
-  stroke(0);
-  strokeWeight(4);
-  ellipse(250, 250, 500, 500);
+  //noFill();
+  //stroke(0);
+  //strokeWeight(4);
+  //ellipse(250, 250, 500, 500);
 }
 
 void mousePressed() {
   branches.add(new LightningBranch());
+  if (branches.size() > 6) branches.remove(0);
 }
 
 // "Borrowed" from StackOverflow
@@ -56,20 +59,20 @@ int blend( int i1, int i2, float ratio ) {
 }
 
 class LightningBranch {
-  private float dir; // DEGREES
+  private float dir;
   private int magnitude;
   
   private List<LightningBranch> children = new ArrayList<LightningBranch>();
   public static final int defaultdepth = 4;
   
   public LightningBranch() {
-    this(defaultdepth, (float)(Math.random() * 360));
+    this(defaultdepth, radians((float)(Math.random() * 360)));
   }
   
-  private LightningBranch(int depth, float degrees) { // TODO: clamp at plasma ball ring, animate, limit direction to vector
-    double degrange = Math.abs(defaultdepth-depth)*16;
-    this.dir = (float)(degrees + (Math.random() * degrange)-(degrange/2));
-    this.magnitude = (int)Math.floor(depth * (Math.random()*10+10));
+  private LightningBranch(int depth, float radians) {
+    float drange = (defaultdepth-depth)*QUARTER_PI/2;
+    this.dir = (float)(radians + (Math.random() * drange)-(drange/2));
+    this.magnitude = (int)Math.floor(depth * (Math.random()*12+15));
     if (depth > 1)
     for (int i = defaultdepth; i >= depth; i-=2) {
       this.children.add(new LightningBranch(depth-1, this.dir));
@@ -81,8 +84,8 @@ class LightningBranch {
   }
   
   private void draw(float ox, float oy) {
-    float ex = (float)(ox + Math.cos(this.dir*PI/180) * this.magnitude);
-    float ey = (float)(ox + Math.sin(this.dir*PI/180) * this.magnitude);
+    float ex = (float)(ox + Math.cos(this.dir) * this.magnitude);
+    float ey = (float)(ox + Math.sin(this.dir) * this.magnitude);
     double distsq = Math.abs((ex - 250) * (ey - 250));
     float radperc= Math.min(Math.max((float)(distsq / (250 * 250)), 0f), 1f);
     stroke(blend(0xff0000ff, 0xaaeeaaff, radperc));
@@ -94,10 +97,14 @@ class LightningBranch {
   }
   
   public void update() {
-    this.dir += Math.random()*20-10;
-    this.magnitude += Math.random()*2-1;
+    update(defaultdepth);
+  }
+  private void update(int depth) {
+    float drange = (defaultdepth-depth)*QUARTER_PI/4;
+    this.dir += (Math.random()*drange)-drange/2;
+    this.magnitude += (Math.random()-0.4)/depth;
     for (LightningBranch child : children) {
-      child.update();
+      child.update(depth-1);
     }
   }
 }
